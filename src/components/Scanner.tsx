@@ -20,10 +20,17 @@ export default function Scanner({ onScan }: ScannerProps) {
         false
       );
       
+      let lastScannedCode = '';
+      let lastScannedTime = 0;
+      
       scanner.render(
         (decodedText) => {
-          onScan(decodedText);
-          // Optional: pause or beep here
+          const now = Date.now();
+          if (decodedText !== lastScannedCode || now - lastScannedTime > 2000) {
+            lastScannedCode = decodedText;
+            lastScannedTime = now;
+            onScan(decodedText);
+          }
         },
         (_error) => {
           // Ignore frequent scan errors
@@ -51,11 +58,11 @@ export default function Scanner({ onScan }: ScannerProps) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2><ScanLine size={24} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '8px' }}/> Barcode Scanner</h2>
         <button 
-          className="glass-button" 
+          className={`glass-button ${useCamera ? 'danger' : 'primary'}`} 
           onClick={() => setUseCamera(!useCamera)}
         >
           {useCamera ? <Keyboard size={18} /> : <ScanLine size={18} />}
-          {useCamera ? 'Manual Input' : 'Use Camera'}
+          {useCamera ? 'Stop Scanning' : 'Start Scanning'}
         </button>
       </div>
 

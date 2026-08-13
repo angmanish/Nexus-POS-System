@@ -33,7 +33,7 @@ export default function Cart({ items, onUpdateQuantity, onRemoveItem }: CartProp
               <div style={{ flex: 1 }}>
                 <h4 style={{ margin: '0 0 4px 0' }}>{item.name}</h4>
                 <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                  ${item.price.toFixed(2)} x {item.quantity}
+                  ₹{item.price.toFixed(2)} x {item.quantity}
                 </p>
               </div>
               
@@ -55,7 +55,7 @@ export default function Cart({ items, onUpdateQuantity, onRemoveItem }: CartProp
                 </div>
                 
                 <div style={{ width: '70px', textAlign: 'right', fontWeight: 600 }}>
-                  ${(item.price * item.quantity).toFixed(2)}
+                  ₹{(item.price * item.quantity).toFixed(2)}
                 </div>
                 
                 <button 
@@ -79,7 +79,7 @@ export default function Cart({ items, onUpdateQuantity, onRemoveItem }: CartProp
       }}>
         <span style={{ fontSize: '1.2rem', color: 'var(--text-secondary)' }}>Total:</span>
         <span style={{ fontSize: '1.8rem', fontWeight: 700, color: 'var(--success)' }}>
-          ${total.toFixed(2)}
+          ₹{total.toFixed(2)}
         </span>
       </div>
     </div>

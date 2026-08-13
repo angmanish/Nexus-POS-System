@@ -45,7 +45,7 @@ export default function Receipt({ items, date, receiptNumber }: ReceiptProps) {
               {item.name}
             </span>
             <span style={{ flex: 1, textAlign: 'center' }}>{item.quantity}</span>
-            <span style={{ flex: 1, textAlign: 'right' }}>${(item.price * item.quantity).toFixed(2)}</span>
+            <span style={{ flex: 1, textAlign: 'right' }}>₹{(item.price * item.quantity).toFixed(2)}</span>
           </div>
         ))}
       </div>
@@ -54,7 +54,7 @@ export default function Receipt({ items, date, receiptNumber }: ReceiptProps) {
       
       <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '18px', marginBottom: '20px' }}>
         <span>TOTAL:</span>
-        <span>${total.toFixed(2)}</span>
+        <span>₹{total.toFixed(2)}</span>
       </div>
       
       <div style={{ textAlign: 'center', marginTop: '30px' }}>
