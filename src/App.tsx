@@ -1,12 +1,12 @@
-import { useState, useCallback, useMemo } from 'react';
-import { ShoppingCart, PackageOpen, Printer } from 'lucide-react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { ShoppingCart, PackageOpen, Printer, Plus, X } from 'lucide-react';
 import Scanner from './components/Scanner';
 import Cart from './components/Cart';
 import Receipt from './components/Receipt';
 import type { Product, CartItem } from './types';
 
-// Mock product database
-const MOCK_DB: Record<string, Product> = {
+// Initial Mock product database
+const INITIAL_DB: Record<string, Product> = {
   '123456789': { barcode: '123456789', name: 'Cybernetic Enhancer', price: 299.99 },
   '987654321': { barcode: '987654321', name: 'Neon Plasma Core', price: 149.50 },
   '111222333': { barcode: '111222333', name: 'Quantum Processor', price: 899.00 },
@@ -14,48 +14,92 @@ const MOCK_DB: Record<string, Product> = {
 };
 
 function App() {
+  const [productDB, setProductDB] = useState<Record<string, Product>>(INITIAL_DB);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
+  
+  // State for unknown product modal
+  const [pendingBarcode, setPendingBarcode] = useState<string | null>(null);
+  const [newProductName, setNewProductName] = useState('');
+  const [newProductPrice, setNewProductPrice] = useState('');
 
-  const showNotification = (message: string, type: 'success' | 'error') => {
+  const showNotification = useCallback((message: string, type: 'success' | 'error') => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 3000);
-  };
+  }, []);
 
-  const handleScan = useCallback(async (barcode: string) => {
-    let productName = `Unknown Product (${barcode})`;
-    let price = Math.floor(Math.random() * 500) + 50; // Random INR price
-    
-    if (MOCK_DB[barcode]) {
-      productName = MOCK_DB[barcode].name;
-      price = MOCK_DB[barcode].price;
-    } else {
-      // Try to fetch real product name from OpenFoodFacts API
-      try {
-        const response = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`);
-        const data = await response.json();
-        if (data.status === 1 && data.product && data.product.product_name) {
-          productName = data.product.product_name;
-        }
-      } catch (err) {
-        console.error("Failed to fetch product data", err);
-      }
-    }
-
+  const addToCart = useCallback((product: Product) => {
     setCartItems(prev => {
-      const existing = prev.find(item => item.barcode === barcode);
+      const existing = prev.find(item => item.barcode === product.barcode);
       if (existing) {
         return prev.map(item => 
-          item.barcode === barcode ? { ...item, quantity: item.quantity + 1 } : item
+          item.barcode === product.barcode ? { ...item, quantity: item.quantity + 1 } : item
         );
       }
-      
-      const newProduct = { barcode, name: productName, price };
-      return [...prev, { ...newProduct, quantity: 1 }];
+      return [...prev, { ...product, quantity: 1 }];
     });
+    showNotification(`Added ${product.name}`, 'success');
+  }, [showNotification]);
+
+  const handleScan = useCallback(async (barcode: string) => {
+    // 1. If it's already in the DB, just add it
+    setProductDB(currentDB => {
+      if (currentDB[barcode]) {
+        addToCart(currentDB[barcode]);
+        return currentDB;
+      }
+      
+      // 2. Not in DB. Let's try OpenFoodFacts first
+      fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === 1 && data.product && data.product.product_name) {
+            const apiProduct: Product = {
+              barcode,
+              name: data.product.product_name,
+              price: Math.floor(Math.random() * 500) + 50 // API doesn't give price, use random for now
+            };
+            // Save to DB and add to cart
+            setProductDB(db => ({ ...db, [barcode]: apiProduct }));
+            addToCart(apiProduct);
+          } else {
+            // Completely unknown! Prompt the user.
+            setPendingBarcode(barcode);
+            setNewProductName('');
+            setNewProductPrice('');
+          }
+        })
+        .catch(() => {
+           // API failed, prompt the user
+           setPendingBarcode(barcode);
+           setNewProductName('');
+           setNewProductPrice('');
+        });
+        
+      return currentDB;
+    });
+  }, [addToCart]);
+
+  const handleSaveNewProduct = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pendingBarcode || !newProductName || !newProductPrice) return;
     
-    showNotification(`Scanned ${productName}`, 'success');
-  }, []);
+    const price = parseFloat(newProductPrice);
+    if (isNaN(price)) {
+      showNotification('Please enter a valid price', 'error');
+      return;
+    }
+
+    const newProduct: Product = {
+      barcode: pendingBarcode,
+      name: newProductName,
+      price: price
+    };
+
+    setProductDB(prev => ({ ...prev, [pendingBarcode]: newProduct }));
+    addToCart(newProduct);
+    setPendingBarcode(null);
+  };
 
   const handleUpdateQuantity = useCallback((barcode: string, delta: number) => {
     setCartItems(prev => 
@@ -78,19 +122,14 @@ function App() {
       showNotification("Cart is empty", "error");
       return;
     }
-    
-    // Trigger print dialog
     window.print();
-    
-    // Optional: clear cart after some time or prompt
-    // setCartItems([]);
   };
 
   const receiptDate = useMemo(() => new Date(), [cartItems]);
   const receiptNumber = useMemo(() => `NEXUS-${Math.floor(Math.random() * 1000000)}`, [cartItems]);
 
   return (
-    <div style={{ minHeight: '100vh', padding: '40px 20px' }}>
+    <div style={{ minHeight: '100vh', padding: '40px 20px', position: 'relative' }}>
       {/* Toast Notification */}
       {notification && (
         <div style={{
@@ -109,6 +148,62 @@ function App() {
           animation: 'fadeIn 0.3s ease-out'
         }}>
           {notification.message}
+        </div>
+      )}
+
+      {/* New Product Modal */}
+      {pendingBarcode && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(5px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 2000
+        }}>
+          <div className="glass-panel animate-fade-in" style={{ width: '400px', maxWidth: '90%' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3>Add Unknown Product</h3>
+              <button onClick={() => setPendingBarcode(null)} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}>
+                <X size={24} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleSaveNewProduct} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)' }}>Barcode</label>
+                <input type="text" className="glass-input" value={pendingBarcode} disabled style={{ opacity: 0.7 }} />
+              </div>
+              
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)' }}>Actual Product Name</label>
+                <input 
+                  type="text" 
+                  className="glass-input" 
+                  placeholder="e.g. Parle-G Biscuits"
+                  value={newProductName}
+                  onChange={e => setNewProductName(e.target.value)}
+                  autoFocus
+                  required
+                />
+              </div>
+              
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', color: 'var(--text-secondary)' }}>Actual Price (₹)</label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  className="glass-input" 
+                  placeholder="e.g. 10.00"
+                  value={newProductPrice}
+                  onChange={e => setNewProductPrice(e.target.value)}
+                  required
+                />
+              </div>
+              
+              <button type="submit" className="glass-button primary" style={{ marginTop: '10px' }}>
+                <Plus size={18} /> Save & Add to Cart
+              </button>
+            </form>
+          </div>
         </div>
       )}
 
@@ -137,7 +232,7 @@ function App() {
               Quick Actions
             </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '20px' }}>
-              Test barcodes: 123456789, 987654321, 111222333, 555444333
+              Test known barcodes: 123456789, 987654321, 111222333, 555444333
             </p>
             <button 
               className="glass-button primary" 
@@ -174,3 +269,4 @@ function App() {
 }
 
 export default App;
+
