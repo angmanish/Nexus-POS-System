@@ -49,28 +49,20 @@ function App() {
         return currentDB;
       }
       
-      // 2. Not in DB. Let's try OpenFoodFacts first
+      // 2. Not in DB. Let's try OpenFoodFacts first to pre-fill the name
       fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`)
         .then(res => res.json())
         .then(data => {
+          setPendingBarcode(barcode);
+          setNewProductPrice(''); // Always require the user to enter the actual price
           if (data.status === 1 && data.product && data.product.product_name) {
-            const apiProduct: Product = {
-              barcode,
-              name: data.product.product_name,
-              price: Math.floor(Math.random() * 500) + 50 // API doesn't give price, use random for now
-            };
-            // Save to DB and add to cart
-            setProductDB(db => ({ ...db, [barcode]: apiProduct }));
-            addToCart(apiProduct);
+            setNewProductName(data.product.product_name);
           } else {
-            // Completely unknown! Prompt the user.
-            setPendingBarcode(barcode);
             setNewProductName('');
-            setNewProductPrice('');
           }
         })
         .catch(() => {
-           // API failed, prompt the user
+           // API failed, prompt the user with empty fields
            setPendingBarcode(barcode);
            setNewProductName('');
            setNewProductPrice('');
@@ -161,7 +153,7 @@ function App() {
         }}>
           <div className="glass-panel animate-fade-in" style={{ width: '400px', maxWidth: '90%' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3>Add Unknown Product</h3>
+              <h3>Add New Product</h3>
               <button onClick={() => setPendingBarcode(null)} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}>
                 <X size={24} />
               </button>
