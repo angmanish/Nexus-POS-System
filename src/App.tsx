@@ -23,29 +23,28 @@ function App() {
   };
 
   const handleScan = useCallback((barcode: string) => {
-    const product = MOCK_DB[barcode];
-    
-    if (product) {
-      setCartItems(prev => {
-        const existing = prev.find(item => item.barcode === barcode);
-        if (existing) {
-          return prev.map(item => 
-            item.barcode === barcode ? { ...item, quantity: item.quantity + 1 } : item
-          );
-        }
-        return [...prev, { ...product, quantity: 1 }];
-      });
-      showNotification(`Added ${product.name}`, 'success');
-    } else {
-      // Mock unknown product for testing
-      const newProduct: Product = {
+    setCartItems(prev => {
+      const existing = prev.find(item => item.barcode === barcode);
+      if (existing) {
+        return prev.map(item => 
+          item.barcode === barcode ? { ...item, quantity: item.quantity + 1 } : item
+        );
+      }
+      
+      const product = MOCK_DB[barcode] || {
         barcode,
         name: `Unknown Product (${barcode})`,
         price: Math.floor(Math.random() * 100) + 0.99
       };
       
-      setCartItems(prev => [...prev, { ...newProduct, quantity: 1 }]);
-      showNotification(`Added ${newProduct.name}`, 'success');
+      return [...prev, { ...product, quantity: 1 }];
+    });
+    
+    const product = MOCK_DB[barcode];
+    if (product) {
+      showNotification(`Scanned ${product.name}`, 'success');
+    } else {
+      showNotification(`Scanned Unknown (${barcode})`, 'success');
     }
   }, []);
 
