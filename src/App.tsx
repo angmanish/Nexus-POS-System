@@ -22,7 +22,26 @@ function App() {
     setTimeout(() => setNotification(null), 3000);
   };
 
-  const handleScan = useCallback((barcode: string) => {
+  const handleScan = useCallback(async (barcode: string) => {
+    let productName = `Unknown Product (${barcode})`;
+    let price = Math.floor(Math.random() * 500) + 50; // Random INR price
+    
+    if (MOCK_DB[barcode]) {
+      productName = MOCK_DB[barcode].name;
+      price = MOCK_DB[barcode].price;
+    } else {
+      // Try to fetch real product name from OpenFoodFacts API
+      try {
+        const response = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`);
+        const data = await response.json();
+        if (data.status === 1 && data.product && data.product.product_name) {
+          productName = data.product.product_name;
+        }
+      } catch (err) {
+        console.error("Failed to fetch product data", err);
+      }
+    }
+
     setCartItems(prev => {
       const existing = prev.find(item => item.barcode === barcode);
       if (existing) {
@@ -31,21 +50,11 @@ function App() {
         );
       }
       
-      const product = MOCK_DB[barcode] || {
-        barcode,
-        name: `Unknown Product (${barcode})`,
-        price: Math.floor(Math.random() * 100) + 0.99
-      };
-      
-      return [...prev, { ...product, quantity: 1 }];
+      const newProduct = { barcode, name: productName, price };
+      return [...prev, { ...newProduct, quantity: 1 }];
     });
     
-    const product = MOCK_DB[barcode];
-    if (product) {
-      showNotification(`Scanned ${product.name}`, 'success');
-    } else {
-      showNotification(`Scanned Unknown (${barcode})`, 'success');
-    }
+    showNotification(`Scanned ${productName}`, 'success');
   }, []);
 
   const handleUpdateQuantity = useCallback((barcode: string, delta: number) => {
