@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { ShoppingCart, PackageOpen, Printer, Plus, X } from 'lucide-react';
 import Scanner from './components/Scanner';
 import Cart from './components/Cart';
@@ -14,7 +14,7 @@ const INITIAL_DB: Record<string, Product> = {
 };
 
 function App() {
-  const [productDB, setProductDB] = useState<Record<string, Product>>(INITIAL_DB);
+  const [, setProductDB] = useState<Record<string, Product>>(INITIAL_DB);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   
